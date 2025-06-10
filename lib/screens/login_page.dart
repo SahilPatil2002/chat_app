@@ -16,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final AuthService _authService = AuthService();
+  bool isPasswordVisible = false;
 
   final Color mainColor = const Color.fromRGBO(108, 99, 255, 1);
 
@@ -73,14 +74,19 @@ class _LoginScreenState extends State<LoginScreen> {
               Expanded(
                 child: Text(
                   "Login Successful",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
           backgroundColor: Color.fromRGBO(139, 195, 74, 1),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           duration: const Duration(seconds: 2),
         ),
@@ -106,14 +112,19 @@ class _LoginScreenState extends State<LoginScreen> {
               Expanded(
                 child: Text(
                   "Login Failed",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
           backgroundColor: const Color.fromARGB(255, 255, 89, 86),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           duration: const Duration(seconds: 2),
         ),
@@ -145,7 +156,9 @@ class _LoginScreenState extends State<LoginScreen> {
       contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: error ? Colors.red : Colors.grey.shade300),
+        borderSide: BorderSide(
+          color: error ? Colors.red : Colors.grey.shade300,
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -229,20 +242,38 @@ class _LoginScreenState extends State<LoginScreen> {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             emailErrorMsg,
-                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ),
                     const SizedBox(height: 20),
                     TextField(
                       controller: passwordController,
-                      obscureText: true,
+                      obscureText: !isPasswordVisible,
                       decoration: customInputDecoration(
                         label: "Password",
                         icon: Icons.lock_outline,
                         error: passwordError,
+                      ).copyWith(
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            isPasswordVisible
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: mainColor,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              isPasswordVisible = !isPasswordVisible;
+                            });
+                          },
+                        ),
                       ),
                     ),
+
                     if (passwordError)
                       Padding(
                         padding: const EdgeInsets.only(top: 6, left: 6),
@@ -250,7 +281,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             passwordErrorMsg,
-                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ),

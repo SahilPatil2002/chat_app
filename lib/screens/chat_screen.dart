@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-// import 'package:intl/intl.dart';
 
 class ChatScreen extends StatefulWidget {
   final UserModel peerUser;
 
-  const ChatScreen({super.key, required this.peerUser});
+  const ChatScreen({Key? key, required this.peerUser}) : super(key: key);
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -18,6 +17,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final currentUser = FirebaseAuth.instance.currentUser;
   late String chatId;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -27,25 +27,49 @@ class _ChatScreenState extends State<ChatScreen> {
     chatId = myId.compareTo(peerId) > 0 ? '$peerId\_$myId' : '$myId\_$peerId';
   }
 
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   void sendMessage() async {
     final msg = _messageController.text.trim();
     if (msg.isEmpty) return;
 
-    final message = {
+    final doc = FirebaseFirestore.instance
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .doc();
+
+    await doc.set({
+      'id': doc.id,
       'text': msg,
       'senderId': currentUser!.uid,
       'receiverId': widget.peerUser.uid,
       'timestamp': FieldValue.serverTimestamp(),
-    };
-
-    await FirebaseFirestore.instance
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .add(message);
+    });
 
     _messageController.clear();
+    _scrollToBottom();
   }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  bool isSameDay(DateTime d1, DateTime d2) =>
+      d1.year == d2.year && d1.month == d2.month && d1.day == d2.day;
 
   @override
   Widget build(BuildContext context) {
@@ -54,15 +78,20 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        automaticallyImplyLeading: true,
         backgroundColor: Colors.white,
         elevation: 1,
         titleSpacing: 0,
         title: Row(
           children: [
-            const CircleAvatar(
-              backgroundColor: Color.fromRGBO(108, 99, 255, 0.1),
-              child: Icon(Icons.person, color: Color.fromRGBO(108, 99, 255, 1)),
+            CircleAvatar(
+              backgroundColor: const Color.fromRGBO(108, 99, 255, 0.1),
+              child: Text(
+                (displayName.isNotEmpty ? displayName[0] : 'U').toUpperCase(),
+                style: const TextStyle(
+                  color: Color.fromRGBO(108, 99, 255, 1),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
             const SizedBox(width: 12),
             Column(
@@ -86,15 +115,24 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.videocam, color: Color.fromRGBO(108, 99, 255, 1)),
+            icon: const Icon(
+              Icons.videocam,
+              color: Color.fromRGBO(108, 99, 255, 1),
+            ),
             onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(Icons.call, color: Color.fromRGBO(108, 99, 255, 1)),
+            icon: const Icon(
+              Icons.call,
+              color: Color.fromRGBO(108, 99, 255, 1),
+            ),
             onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(Icons.more_vert, color: Color.fromRGBO(108, 99, 255, 1)),
+            icon: const Icon(
+              Icons.more_vert,
+              color: Color.fromRGBO(108, 99, 255, 1),
+            ),
             onPressed: () {},
           ),
         ],
@@ -107,7 +145,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   .collection('chats')
                   .doc(chatId)
                   .collection('messages')
-                  .orderBy('timestamp', descending: true)
+                  .orderBy('timestamp')
                   .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
@@ -115,9 +153,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
 
                 final messages = snapshot.data!.docs;
-
                 return ListView.builder(
-                  reverse: true,
+                  controller: _scrollController,
+                  padding: const EdgeInsets.only(bottom: 12, top: 12),
                   itemCount: messages.length,
                   itemBuilder: (_, index) {
                     final data = messages[index];
@@ -126,21 +164,44 @@ class _ChatScreenState extends State<ChatScreen> {
                     final timestamp = data['timestamp'] != null
                         ? (data['timestamp'] as Timestamp).toDate()
                         : DateTime.now();
+                    final timeString = DateFormat('hh:mm a').format(timestamp);
 
-                    final formattedTime = DateFormat('hh:mm a').format(timestamp);
+                    final showDateSeparator = index == 0 ||
+                        !isSameDay(
+                          timestamp,
+                          (messages[index - 1]['timestamp'] as Timestamp)
+                              .toDate(),
+                        );
 
-                    return Align(
-                      alignment:
-                          isMe ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
+                    final bubble = Align(
+                      alignment: isMe
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.symmetric(
-                            vertical: 6, horizontal: 12),
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.75,
+                        ),
                         decoration: BoxDecoration(
-                          color: isMe
-                              ? const Color.fromRGBO(108, 99, 255, 1)
-                              : Colors.white,
+                          gradient: isMe
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFF6A85B6),
+                                    Color(0xFFBAC8E0),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : null,
+                          color: isMe ? null : Colors.white,
                           borderRadius: BorderRadius.only(
                             topLeft: const Radius.circular(16),
                             topRight: const Radius.circular(16),
@@ -167,7 +228,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              formattedTime,
+                              timeString,
                               style: TextStyle(
                                 fontSize: 10,
                                 color: isMe
@@ -179,21 +240,46 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       ),
                     );
+
+                    return Column(
+                      children: [
+                        if (showDateSeparator)
+                          Center(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                DateFormat('MMM d, yyyy').format(timestamp),
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          ),
+                        bubble,
+                      ],
+                    );
                   },
                 );
               },
             ),
           ),
-
-          // Message Input
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.emoji_emotions_outlined,
-                        color: Color.fromRGBO(108, 99, 255, 1)),
+                    icon: const Icon(
+                      Icons.emoji_emotions_outlined,
+                      color: Color.fromRGBO(108, 99, 255, 1),
+                    ),
                     onPressed: () {},
                   ),
                   Expanded(
@@ -205,11 +291,14 @@ class _ChatScreenState extends State<ChatScreen> {
                         fillColor: Colors.white,
                         filled: true,
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 14),
+                          horizontal: 20,
+                          vertical: 14,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(30),
                           borderSide: BorderSide.none,
                         ),
+                        isDense: true,
                       ),
                     ),
                   ),
@@ -227,7 +316,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );

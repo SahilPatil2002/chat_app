@@ -15,6 +15,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final AuthService _authService = AuthService();
+  
 
   final Color mainColor = const Color.fromRGBO(108, 99, 255, 1);
 
@@ -25,6 +26,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String nameErrorMsg = '';
   String emailErrorMsg = '';
   String passwordErrorMsg = '';
+  bool isPasswordVisible = false;
+
 
   @override
   void dispose() {
@@ -173,7 +176,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: error ? Colors.red : Colors.grey.shade300),
+        borderSide: BorderSide(
+          color: error ? Colors.red : Colors.grey.shade300,
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -254,7 +259,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             nameErrorMsg,
-                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ),
@@ -275,20 +283,38 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             emailErrorMsg,
-                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ),
                     const SizedBox(height: 20),
                     TextField(
                       controller: passwordController,
-                      obscureText: true,
+                      obscureText: !isPasswordVisible,
                       decoration: customInputDecoration(
                         label: "Password",
                         icon: Icons.lock_outline,
                         error: passwordError,
+                      ).copyWith(
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            isPasswordVisible
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: mainColor,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              isPasswordVisible = !isPasswordVisible;
+                            });
+                          },
+                        ),
                       ),
                     ),
+
                     if (passwordError)
                       Padding(
                         padding: const EdgeInsets.only(top: 6, left: 6),
@@ -296,7 +322,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             passwordErrorMsg,
-                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ),
